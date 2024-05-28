@@ -1,4 +1,6 @@
+import json
 from os import system, name
+from gatherdata import gatherData
 
 def main():
     lastError = ""
@@ -16,7 +18,7 @@ def main():
             lastError = "Please choose a valid choice."
             continue
         if choice == 1:
-            # getMonthlyCommissions()
+            getMonthlyCommissions()
             break
         elif choice == 2:
             break
@@ -38,6 +40,26 @@ def clearScreen():
         _ = system('cls')
     else:
         _ = system('clear')
+
+
+def getMonthlyCommissions():
+    print("Processing Monthly Commissions")
+    # json expected structure
+    # {
+    #   "TID": {
+    #       "trx_mult": numeric,
+    #       "sur_mult": numeric,
+    #       "print_as": string
+    #   },
+    # }
+    #with open("json/monthly.json", "r") as file:
+    #    atm_list = json.load(file)
+    #    file.close()
+    
+    summary = gatherData()
+    print(summary.text.splitlines())
+    
+    
 
 if __name__ == "__main__":
     main()
