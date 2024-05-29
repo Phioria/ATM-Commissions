@@ -1,6 +1,6 @@
 import json
 from os import system, name
-from gatherdata import gatherData
+from gatherdata import getCommissionData
 
 def main():
     lastError = ""
@@ -41,25 +41,102 @@ def clearScreen():
     else:
         _ = system('clear')
 
-
 def getMonthlyCommissions():
     print("Processing Monthly Commissions")
     # json expected structure
     # {
     #   "TID": {
-    #       "trx_mult": numeric,
-    #       "sur_mult": numeric,
-    #       "print_as": string
+    #     "trx_mult": numeric,
+    #     "sur_mult": numeric,
+    #     "print_as": string
     #   },
     # }
-    #with open("json/monthly.json", "r") as file:
-    #    atm_list = json.load(file)
-    #    file.close()
+    with open("json/monthly.json", "r") as file:
+        atm_list = json.load(file)
+        file.close()
+  
+    summary = getCommissionData("Monthly")
+    # 0 - TID, 1 - Group, 2 - Location, 3 - Garbage, 4 - Surcharge TRX, 5 - Surcharge Amount, 6 - Transaction Volume
+    lines_temp = summary.text.splitlines()
+    commission_data = dict()
+
+    # Parse each line
+    # 1. Remove the first and last character of the line (which is a quotation mark)
+    # 2. Split the line up into a list(array) based on the delimiter "," which prevents bad splitting on multi group locations
+    # 3. Append the line list into the lines list for later use
+    for line_temp in lines_temp[1:]:
+        unsplit_line = line_temp[1:-1]
+        line = unsplit_line.split('","')
+        print(line)
+        tid = line[0]
+        loc = line[2]
+        trx = int(line[4].replace(',', ''))
+        sur = float(line[5].replace('$', '').replace(',', ''))
+        vol = float(line[6].replace('$', '').replace(',', ''))
+        commission_data[tid] = {
+            "location": loc,
+            "transactions": trx,
+            "surcharge": sur,
+            "volume": vol
+        }
+    returned_tids = list(commission_data.keys())
+    tids = list(atm_list.keys())
+
+    def calculateCommission(terminal):
+        t_multiplier = atm_list[terminal]['trx_mult']
+        s_multiplier = atm_list[terminal]['sur_mult']
+        cur_loc = atm_list[terminal]["print_as"]
+        cur_trx = commission_data[terminal]["transactions"]
+        cur_sur = commission_data[terminal]["surcharge"]
+        commission = (cur_trx * t_multiplier) + (cur_sur * s_multiplier)
+        comm_obj = {
+            "location": cur_loc,
+            "transactions": cur_trx,
+            "surcharge": cur_sur,
+            "commission": commission
+        }
+        return comm_obj
+
+    commissions = dict()
+
+    for tid in tids:
+        if tid in returned_tids:
+            current_commission = calculateCommission(tid)
+            commissions[tid] = current_commission
+    commissions["Prince"] = getGroupTotal("Prince")
+    commissions["Roberts"] = getGroupTotal("Roberts")
+    # Todo Write this function next
+    formatCommissions(commissions)
     
-    summary = gatherData()
-    print(summary.text.splitlines())
-    
-    
+def getGroupTotal(group):
+    summary = getCommissionData(group)
+    lines_temp = summary.text.splitlines()
+    lines = list()
+    for line in lines_temp:
+        unsplit_line = line[1:-1]
+        line_list = unsplit_line.split('","')
+        lines.append(line_list)
+    trx_total = 0
+    volume_total = 0
+    for line in lines[1:]: # Skip the first line with headers
+        trx = float(line[4].replace('$', '').replace(',', ''))
+        volume = float(line[5].replace('$', '').replace(',', ''))
+        trx_total += trx
+        volume_total += volume
+
+    with open("json/groups.json", "r") as file:
+        group_details = json.load(file)
+        file.close()
+
+    t_multiplier, offset, print_as = group_details[group].values()
+    commission = (trx_total * t_multiplier) - offset
+    comm_obj = {
+        "location": print_as,
+        "transactions": trx_total,
+        "surcharge": 0,
+        "commission": commission
+    }
+    return comm_obj
 
 if __name__ == "__main__":
     main()
