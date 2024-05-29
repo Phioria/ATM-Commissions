@@ -1,5 +1,5 @@
 import json
-from os import system, name, path
+from os import system, name, path, makedirs
 from gatherdata import getCommissionData
 from typing import Literal, get_args
 from datetime import datetime
@@ -69,7 +69,6 @@ def getMonthlyCommissions():
     for line_temp in lines_temp[1:]:
         unsplit_line = line_temp[1:-1]
         line = unsplit_line.split('","')
-        print(line)
         tid = line[0]
         loc = line[2]
         trx = int(line[4].replace(',', ''))
@@ -146,7 +145,7 @@ def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
     options = get_args(_PERIOD)
     assert period_ in options, f"{period_} is not in {options}"
     outputDirectory = period_ + "Commissions"
-    filename = period_.lower + "-commissions-" + datetime.now().strftime("%B-%Y") + ".txt"
+    filename = period_.lower() + "-commissions-" + datetime.now().strftime("%B-%Y") + ".txt"
     filepath = path.join(outputDirectory, filename)
     tids = list(commissions.keys())
 
@@ -162,6 +161,8 @@ def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
         current_str = location + ", " + payout + "\n"
         message += current_str
 
+    if not path.exists(outputDirectory):
+        makedirs(outputDirectory)
     with open(filepath, "w") as file:
         file.write(message)
         file.close()
