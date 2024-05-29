@@ -1,6 +1,8 @@
 import json
-from os import system, name
+from os import system, name, path
 from gatherdata import getCommissionData
+from typing import Literal, get_args
+from datetime import datetime
 
 def main():
     lastError = ""
@@ -137,6 +139,34 @@ def getGroupTotal(group):
         "commission": commission
     }
     return comm_obj
+
+_PERIOD = Literal["Monthly", "Quarterly"]
+
+def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
+    options = get_args(_PERIOD)
+    assert period_ in options, f"{period_} is not in {options}"
+    outputDirectory = period_ + "Commissions"
+    filename = period_.lower + "-commissions-" + datetime.now().strftime("%B-%Y") + ".txt"
+    filepath = path.join(outputDirectory, filename)
+    tids = list(commissions.keys())
+
+    totalCommissions = 0
+
+    # Build the output file content line by line for each location
+    message = ""
+    for tid in tids:
+        location = commissions[tid]["location"]
+        unformattedPayout = commissions[tid]["commission"]
+        totalCommissions += unformattedPayout
+        payout = "${:.2f}".format(unformattedPayout)
+        current_str = location + ", " + payout + "\n"
+        message += current_str
+
+    with open(filepath, "w") as file:
+        file.write(message)
+        file.close()
+
+    print(f"{period_} Commissions Complete")
 
 if __name__ == "__main__":
     main()
