@@ -147,15 +147,21 @@ def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
     outputDirectory = period_ + "Commissions"
     filename = period_.lower() + "-commissions-" + datetime.now().strftime("%B-%Y") + ".txt"
     filepath = path.join(outputDirectory, filename)
-    tids = list(commissions.keys())
+
+    # Sort the commission dictionary by location name
+    # items() returns tuples of a key and value, so item[1] would be the nested dictionary
+    # and item[1]['location'] would reference a value in the nested dictionary associated with the key 'location'
+    sortedCommissions = dict(sorted(commissions.items(), key=lambda item:item[1]['location']))
+
+    tids = list(sortedCommissions.keys())
 
     totalCommissions = 0
 
     # Build the output file content line by line for each location
     message = ""
     for tid in tids:
-        location = commissions[tid]["location"]
-        unformattedPayout = commissions[tid]["commission"]
+        location = sortedCommissions[tid]["location"]
+        unformattedPayout = sortedCommissions[tid]["commission"]
         totalCommissions += unformattedPayout
         payout = "${:.2f}".format(unformattedPayout)
         current_str = location + ", " + payout + "\n"
