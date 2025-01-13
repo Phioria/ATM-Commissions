@@ -1,26 +1,26 @@
 import json
 from os import system, name, path, makedirs
-from gatherdata import getCommissionData
+from gatherdata import get_commission_data
 from typing import Literal, get_args
 from datetime import datetime
 
 def main():
-    lastError = ""
+    last_error = ""
     while True:
-        clearScreen()
-        if lastError != "":
-            print(lastError)
-        printMenu()
+        clear_screen()
+        if last_error != "":
+            print(last_error)
+        print_menu()
         try:
             choice = int(input("What would you like to process?  "))
         except:
-            lastError = "Please choose a numeric option."
+            last_error = "Please choose a numeric option."
             continue
         if choice < 1 or choice > 2:
-            lastError = "Please choose a valid choice."
+            last_error = "Please choose a valid choice."
             continue
         if choice == 1:
-            getMonthlyCommissions()
+            get_monthly_commissions()
             break
         elif choice == 2:
             break
@@ -29,21 +29,25 @@ def main():
     input("Press Enter to Exit")
         
 
-def printMenu():
-    menuOptions = {
+def print_menu():
+    menu_options = {
         1: 'Monthly Commissions',
-        2: 'Exit'
+        2: 'Interchange',
+        3: 'Quarterly Commissions',
+        4: 'Monthey Commissions and Interchange',
+        5: 'Everything',
+        6: 'Exit'
     }
-    for key in menuOptions.keys():
-        print(key, '--', menuOptions[key])
+    for key in menu_options.keys():
+        print(key, '--', menu_options[key])
 
-def clearScreen():
+def clear_screen():
     if name == 'nt':
         _ = system('cls')
     else:
         _ = system('clear')
 
-def getMonthlyCommissions():
+def get_monthly_commissions():
     print("Processing Monthly Commissions")
     # json expected structure
     # {
@@ -57,14 +61,14 @@ def getMonthlyCommissions():
         atm_list = json.load(file)
         file.close()
   
-    summary = getCommissionData("Monthly")
+    summary = get_commission_data("Monthly")
     # 0 - TID, 1 - Group, 2 - Location, 3 - Garbage, 4 - Surcharge TRX, 5 - Surcharge Amount, 6 - Transaction Volume
     lines_temp = summary.text.splitlines()
     commission_data = dict()
 
     # Parse each line
     # 1. Remove the first and last character of the line (which is a quotation mark)
-    # 2. Split the line up into a list(array) based on the delimiter "," which prevents bad splitting on multi group locations
+    # 2. Split the line up into a list based on the delimiter "," which prevents bad splitting on multi group locations
     # 3. Append the line list into the lines list for later use
     for line_temp in lines_temp[1:]:
         unsplit_line = line_temp[1:-1]
@@ -83,7 +87,7 @@ def getMonthlyCommissions():
     returned_tids = list(commission_data.keys())
     tids = list(atm_list.keys())
 
-    def calculateCommission(terminal):
+    def calculate_commission(terminal):
         t_multiplier = atm_list[terminal]['trx_mult']
         s_multiplier = atm_list[terminal]['sur_mult']
         cur_loc = atm_list[terminal]["print_as"]
@@ -102,15 +106,14 @@ def getMonthlyCommissions():
 
     for tid in tids:
         if tid in returned_tids:
-            current_commission = calculateCommission(tid)
+            current_commission = calculate_commission(tid)
             commissions[tid] = current_commission
-    commissions["Prince"] = getGroupTotal("Prince")
-    commissions["Roberts"] = getGroupTotal("Roberts")
-    # Todo Write this function next
-    formatCommissions(commissions)
+    commissions["Prince"] = get_group_total("Prince")
+    commissions["Roberts"] = get_group_total("Roberts")
+    format_commissions(commissions)
     
-def getGroupTotal(group):
-    summary = getCommissionData(group)
+def get_group_total(group):
+    summary = get_commission_data(group)
     lines_temp = summary.text.splitlines()
     lines = list()
     for line in lines_temp:
@@ -141,7 +144,7 @@ def getGroupTotal(group):
 
 _PERIOD = Literal["Monthly", "Quarterly"]
 
-def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
+def format_commissions(commissions, period_: _PERIOD = "Monthly"):
     options = get_args(_PERIOD)
     assert period_ in options, f"{period_} is not in {options}"
     outputDirectory = period_ + "Commissions"
@@ -174,6 +177,16 @@ def formatCommissions(commissions, period_: _PERIOD = "Monthly"):
         file.close()
 
     print(f"{period_} Commissions Complete")
+
+def get_interchange():
+    print("Processing Interchange")
+    interchange_totals = get_interchange()
+
+    total_interchange = sum(d["payout"] for d in interchange_totals.values() if d)
+
+    #write_or_append_totals("Interchange", total_interchange)
+    #format_interchange(interchange_totals)
+
 
 if __name__ == "__main__":
     main()
