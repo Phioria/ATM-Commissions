@@ -1,5 +1,6 @@
 import json
-from os import system, name, path, makedirs
+from os import system, name, path, makedirs, listdir, remove
+from shutil import copy
 from gatherdata import get_commission_data, get_interchange_data
 from typing import Literal, get_args
 from datetime import datetime
@@ -24,6 +25,20 @@ def main():
             break
         elif choice == 2:
             get_interchange()
+            break
+        elif choice == 3:
+            #get_quarterly_commissions()
+            break
+        elif choice == 4:
+            get_monthly_commissions()
+            get_interchange()
+            collect_files()
+            break
+        elif choice == 5:
+            get_monthly_commissions()
+            get_interchange()
+            #get_quarterly_commissions()
+            collect_files()
             break
         elif choice == 6:
             break
@@ -68,6 +83,66 @@ def write_string_to_file(name, data):
     with open(name, "w") as file:
         file.write(data)
         file.close()
+
+def collect_files():
+    cc_directory = "CurrentCommissions"
+    comm_directory = "MonthlyCommissions"
+    int_directory = "Interchange"
+    summary_directory = "Summary"
+
+    # Remove old file from the CurrentCommissions directory
+    try:
+        files = listdir(cc_directory)
+        for file in files:
+            file_path = path.join(cc_directory, file)
+            if path.isfile(file_path):
+                remove(file_path)
+        print("Got rid of the clutter. Ready for file collection")
+    except OSError:
+        print("Oops, boss...something bad happened while trying to delete old files ¯\_(ツ)_/¯")
+
+    # Copy current Summary file to CurrentCommissions directory
+    try:
+        summary_file = "summary-" + get_current_month_year() + ".txt"
+        summary_file_path = path.join(summary_directory, summary_file)
+        new_summary_file_path = path.join(cc_directory, summary_file)
+        if path.isfile(summary_file_path):
+            copy(summary_file_path, new_summary_file_path)
+    except OSError:
+        print("The current summary file is being uncooperative and unmovable")
+
+    # Copy current Commission file to CurrentCommissions directory
+    try:
+        commission_file = "monthly-commissions-" + get_current_month_year() + ".txt"
+        commission_file_path = path.join(comm_directory, commission_file)
+        new_commission_file_path = path.join(cc_directory, commission_file)
+        if path.isfile(commission_file_path):
+            copy(commission_file_path, new_commission_file_path)
+    except OSError:
+        print("The current commission file is being uncooperative and unmovable")
+
+    # Copy current Interchange file to CurrentCommissions directory
+    try:
+        interchange_file = "interchange-" + get_current_month_year() + ".txt"
+        interchange_file_path = path.join(int_directory, interchange_file)
+        new_interchange_file_path = path.join(cc_directory, interchange_file)
+        if path.isfile(interchange_file_path):
+            copy(interchange_file_path, new_interchange_file_path)
+    except OSError:
+        print("Interchange file doesn't want to copy")
+
+    # If it is a quarterly month, then copy the quarterly commission file as well
+    if datetime.now().month % 3 == 1:
+        quarterly_directory = "QuarterlyCommissions"
+        try:
+            quarterly_file = "quarterly-commissions-" + get_current_month_year() + ".txt"
+            quarterly_file_path = path.join(quarterly_directory, quarterly_file)
+            new_quarterly_file_path = path.join(cc_directory, quarterly_file)
+            if path.isfile(quarterly_file_path):
+                copy(quarterly_file_path, new_quarterly_file_path)
+        except OSError:
+            print("Quarterly file doesn't want to be copied")
+    print("Got the gang back together")
 
 
 def get_monthly_commissions():
