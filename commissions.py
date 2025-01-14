@@ -1,6 +1,6 @@
 import json
 from os import system, name, path, makedirs
-from gatherdata import get_commission_data
+from gatherdata import get_commission_data, get_interchange_data
 from typing import Literal, get_args
 from datetime import datetime
 
@@ -16,19 +16,23 @@ def main():
         except:
             last_error = "Please choose a numeric option."
             continue
-        if choice < 1 or choice > 2:
+        if choice < 1 or choice > 6:
             last_error = "Please choose a valid choice."
             continue
         if choice == 1:
             get_monthly_commissions()
             break
         elif choice == 2:
+            get_interchange()
+            break
+        elif choice == 6:
             break
         else:
             "Invalid option. Please choose a number between 1 and 2."
     input("Press Enter to Exit")
         
 
+# Helper Functions
 def print_menu():
     menu_options = {
         1: 'Monthly Commissions',
@@ -46,6 +50,25 @@ def clear_screen():
         _ = system('cls')
     else:
         _ = system('clear')
+
+def get_current_month_year():
+    return datetime.now().strftime("%B-%Y")
+
+def write_or_append_totals(category, amount):
+    summary_directory = "Summary"
+    filename = "summary-" + get_current_month_year() + ".txt"
+    filepath = path.join(summary_directory, filename)
+    formatted_amount = "${:.2f}".format(amount)
+    with open(filepath, "a") as file:
+        file_string = category + ": " + formatted_amount + "\n"
+        file.write(file_string)
+        file.close()
+
+def write_string_to_file(name, data):
+    with open(name, "w") as file:
+        file.write(data)
+        file.close()
+
 
 def get_monthly_commissions():
     print("Processing Monthly Commissions")
@@ -180,13 +203,29 @@ def format_commissions(commissions, period_: _PERIOD = "Monthly"):
 
 def get_interchange():
     print("Processing Interchange")
-    interchange_totals = get_interchange()
+    interchange_totals = get_interchange_data()
 
     total_interchange = sum(d["payout"] for d in interchange_totals.values() if d)
 
-    #write_or_append_totals("Interchange", total_interchange)
-    #format_interchange(interchange_totals)
+    write_or_append_totals("Interchange", total_interchange)
+    message = format_interchange(interchange_totals)
 
+    interchange_directory = "Interchange"
+    filename = "interchange-" + get_current_month_year() + ".txt"
+    filepath = path.join(interchange_directory, filename)
+    write_string_to_file(filepath, message)
+
+    print("Interchange Complete")
+
+def format_interchange(interchange):
+    subs = list(interchange.keys())
+    message = ""
+    for sub in subs:
+        location = interchange[sub]["print_as"]
+        payout = "${:.2f}".format(interchange[sub]["payout"])
+        current_str = location + ", " + payout + "\n"
+        message += current_str
+    return message
 
 if __name__ == "__main__":
     main()
