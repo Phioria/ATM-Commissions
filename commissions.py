@@ -8,7 +8,7 @@ from datetime import datetime
 def main():
     last_error = ""
     while True:
-        clear_screen()
+        #clear_screen()
         if last_error != "":
             print(last_error)
         print_menu()
@@ -27,7 +27,7 @@ def main():
             get_interchange()
             break
         elif choice == 3:
-            #get_quarterly_commissions()
+            get_quarterly_commissions()
             break
         elif choice == 4:
             get_monthly_commissions()
@@ -37,13 +37,13 @@ def main():
         elif choice == 5:
             get_monthly_commissions()
             get_interchange()
-            #get_quarterly_commissions()
+            get_quarterly_commissions()
             collect_files()
             break
         elif choice == 6:
             break
         else:
-            "Invalid option. Please choose a number between 1 and 2."
+            "Invalid option. Please choose a number between 1 and 6."
     input("Press Enter to Exit")
         
 
@@ -71,6 +71,8 @@ def get_current_month_year():
 
 def write_or_append_totals(category, amount):
     summary_directory = "Summary"
+    if not path.exists(summary_directory):
+        makedirs(summary_directory)
     filename = "summary-" + get_current_month_year() + ".txt"
     filepath = path.join(summary_directory, filename)
     formatted_amount = "${:.2f}".format(amount)
@@ -92,6 +94,8 @@ def collect_files():
 
     # Remove old file from the CurrentCommissions directory
     try:
+        if not path.exists(cc_directory):
+            makedirs(cc_directory)
         files = listdir(cc_directory)
         for file in files:
             file_path = path.join(cc_directory, file)
@@ -99,7 +103,7 @@ def collect_files():
                 remove(file_path)
         print("Got rid of the clutter. Ready for file collection")
     except OSError:
-        print("Oops, boss...something bad happened while trying to delete old files ¯\_(ツ)_/¯")
+        print("Oops, boss...something bad happened while trying to delete old files ¯\\_(ツ)_/¯")
 
     # Copy current Summary file to CurrentCommissions directory
     try:
@@ -231,7 +235,7 @@ def get_group_total(group):
         file.close()
 
     t_multiplier, offset, print_as = group_details[group].values()
-    commission = (trx_total * t_multiplier) - offset
+    commission = (trx_total * t_multiplier) + offset
     comm_obj = {
         "location": print_as,
         "transactions": trx_total,
@@ -286,6 +290,8 @@ def get_interchange():
     message = format_interchange(interchange_totals)
 
     interchange_directory = "Interchange"
+    if not path.exists(interchange_directory):
+        makedirs(interchange_directory)
     filename = "interchange-" + get_current_month_year() + ".txt"
     filepath = path.join(interchange_directory, filename)
     write_string_to_file(filepath, message)
@@ -301,6 +307,54 @@ def format_interchange(interchange):
         current_str = location + ", " + payout + "\n"
         message += current_str
     return message
+
+def get_quarterly_commissions():
+    print("Processing Quarterly Commissions")
+    with open("json/quarterly.json", "r") as file:
+        atm_list = json.load(file)
+        file.close()
+
+    summary = get_commission_data("Quarterly")
+    # 0 - TID, 1 - Group, 2 - Location, 3 - Garbage, 4 - Surcharge TRX, 5 - Surcharge Amount, 6 - Transaction Volume
+    lines_temp = summary.text.splitlines()
+    commission_data = dict()
+    for line_temp in lines_temp[1:]:
+        unsplit_line = line_temp[1:-1]
+        line = unsplit_line.split('","')
+        #lines.append(line_list)
+        tid = line[0]
+        #print(tid)
+        loc = line[2]
+        trx = int(line[4].replace(',', ''))
+        sur = float(line[5].replace('$', '').replace(',', ''))
+        vol = float(line[6].replace('$', '').replace(',', ''))
+        commission_data[tid] = {
+            "location": loc,
+            "transactions": trx,
+            "surcharge": sur,
+            "volume": vol
+        }
+    returned_tids = list(commission_data.keys())
+    tids = list(atm_list.keys())
+    def calculateCommission(terminal):
+        t_multiplier = atm_list[terminal]['trx_mult']
+        t_less = atm_list[terminal]['less']
+        cur_loc = atm_list[terminal]['print_as']
+        cur_trx = commission_data[terminal]["transactions"]
+        commission = (cur_trx * t_multiplier) - t_less
+        comm_obj = {
+            "location": cur_loc,
+            "transactions": cur_trx,
+            "commission": commission
+        }
+        return comm_obj
+    commissions = dict()
+    for tid in tids:
+        if tid in returned_tids:
+            current_commission = calculateCommission(tid)
+            commissions[tid] = current_commission
+    format_commissions(commissions, "Quarterly")
+    
 
 if __name__ == "__main__":
     main()
