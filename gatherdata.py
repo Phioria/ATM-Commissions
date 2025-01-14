@@ -10,10 +10,10 @@ atm_password = os.getenv("ATM_PASSWORD_PROD")
 auth_url = os.getenv("AUTH_URL")
 summary_url = os.getenv("SUMMARY_URL")
 interchange_url = os.getenv("INTERCHANGE_URL")
-p_buyrate = os.getenv("P_BUYRATE")
-a_buyrate = os.getenv("A_BUYRATE")
+p_buyrate = float(os.getenv("P_BUYRATE"))
+a_buyrate = float(os.getenv("A_BUYRATE"))
 a_name = os.getenv("A_NAME")
-b_buyrate = os.getenv("B_BUYRATE")
+b_buyrate = float(os.getenv("B_BUYRATE"))
 b_name = os.getenv("B_NAME")
 
 headers = {
@@ -111,21 +111,21 @@ def get_interchange_data():
       unsplit_line = raw_line[1:-1]
       line = unsplit_line.split('","')
       trx = int(line[2].replace(',', ''))
-      interchange_totals[business["trx"]] += trx
+      interchange_totals[business]["trx"] += trx
       # This is not very dry, refactor when time permits
       # Payout structure is different for different businesses
       if business == "B":
         strx = int(line[3].replace(',', ''))
         interchange = float(line[4].replace('$', '').replace(',', ''))
-        interchange_totals[business]["interchange"] += interchange
         interchange_totals[business]["strx"] += strx
-        payout = round_to_quarter(interchange_totals[business]["strx"] * b_buyrate)
-        interchange_totals[business]["payout"] = payout
       else:
         interchange = float(line[3].replace('$', '').replace(',', ''))
-        interchange_totals[business]["interchange"] += interchange
-        payout = interchange - (trx * (p_buyrate + a_buyrate))
-        interchange_totals[business]["payout"] = payout
-        
+      interchange_totals[business]["interchange"] += interchange
+      if business == "B":
+        payout = round_to_quarter(interchange_totals[business]["strx"] * b_buyrate)
+      else:
+        payout = interchange_totals[business]["interchange"] - (interchange_totals[business]["trx"] * (p_buyrate + a_buyrate))
+      interchange_totals[business]["payout"] = payout
+
   return interchange_totals
   
